@@ -23,14 +23,19 @@ import {
   arcTestnet,
 } from "@/lib/config";
 import {explainError} from "@/lib/errors";
+import {CountdownRing} from "./CountdownRing";
+import {StreakTimeline} from "./StreakTimeline";
+import {Calendar, ChevronDown, Clock, Coins, ExternalLink, Flame, ShieldCheck, Trophy, Wallet} from "./icons";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function fmtUsdc(v?: bigint): string {
+/** USDC display, always 2 decimals ("13.74 USDC"). */
+function fmtUsdc2(v?: bigint): string {
   if (v === undefined) return "—";
-  return `${formatUnits(v, USDC_DECIMALS)} USDC`;
+  const n = Number(formatUnits(v, USDC_DECIMALS));
+  return `${n.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
 
 function fmtCountdown(totalSeconds: number): string {
@@ -73,6 +78,8 @@ export default function StreakApp() {
   const [notice, setNotice] = React.useState<string | null>(null);
   const [txs, setTxs] = React.useState<TxRecord[]>([]);
   const [now, setNow] = React.useState<number>(() => Math.floor(Date.now() / 1000));
+  const [justClaimed, setJustClaimed] = React.useState(false);
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
 
   // 1s ticker for the countdown.
   React.useEffect(() => {
@@ -98,15 +105,10 @@ export default function StreakApp() {
     functionName: "paused",
     query: {enabled: ready, refetchInterval: 30_000},
   });
-  const balanceQ = useReadContract({
-    ...common,
-    functionName: "contractBalance",
-    query: {enabled: ready, refetchInterval: 30_000},
-  });
   const treasuryQ = useReadContract({
     ...common,
     functionName: "treasury",
-    query: {enabled: ready, refetchInterval: 60_000},
+    query: {enabled: ready && advancedOpen, refetchInterval: 60_000},
   });
   const usdcBalQ = useReadContract({
     abi: erc20Abi,
@@ -137,13 +139,12 @@ export default function StreakApp() {
 
   const refetchAll = React.useCallback(() => {
     void userQ.refetch();
-    void balanceQ.refetch();
     void usdcBalQ.refetch();
     void allowanceQ.refetch();
-  }, [userQ, balanceQ, usdcBalQ, allowanceQ]);
+  }, [userQ, usdcBalQ, allowanceQ]);
 
   // ------------------------------------------------------------------
-  // Transaction helpers
+  // Transaction helpers (flow preserved: simulate → approve → wait → act)
   // ------------------------------------------------------------------
 
   const trackTx = React.useCallback((hash: `0x${string}`, label: string) => {
@@ -228,6 +229,8 @@ export default function StreakApp() {
       setBusy("registering");
       await sendStreakTx("register", "Register (1.00 USDC)");
       setNotice("Registered! Your streak starts at 1. Come back in 24 hours.");
+      setJustClaimed(true);
+      setTimeout(() => setJustClaimed(false), 2500);
     } catch (e) {
       setError(explainError(e));
     } finally {
@@ -244,6 +247,8 @@ export default function StreakApp() {
       setBusy("claiming");
       await sendStreakTx("claim", "Daily claim (0.01 USDC)");
       setNotice(expired ? "Streak restarted at 1 — keep it going!" : "Claim confirmed — streak extended!");
+      setJustClaimed(true);
+      setTimeout(() => setJustClaimed(false), 2500);
     } catch (e) {
       setError(explainError(e));
     } finally {
@@ -253,20 +258,39 @@ export default function StreakApp() {
   }, [ensureAllowance, sendStreakTx, refetchAll, expired]);
 
   // ------------------------------------------------------------------
+  // Countdown ring labels
+  // ------------------------------------------------------------------
+
+  const ringLabel = !registered ? "—" : claimable ? "Ready" : fmtCountdown(secondsToClaim);
+  const ringSublabel = !registered
+    ? ""
+    : claimable
+      ? expired
+        ? "Claim to restart your streak"
+        : `Claim within ${fmtCountdown(secondsToExpiry)} to keep your streak`
+      : "until your next claim";
+
+  // ------------------------------------------------------------------
   // Render
   // ------------------------------------------------------------------
 
   return (
-    <main className="mx-auto max-w-4xl px-4 pb-20 pt-8">
+    <main className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:px-6">
       {/* Header */}
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-100">
-            <span className="text-cyan-400">Arc</span> Daily Streak
-          </h1>
-          <p className="text-sm text-slate-500">On-chain daily streaks on Arc Testnet · USDC</p>
+      <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-400">
+            <Flame size={22} />
+          </div>
+          <div>
+            <h1 className="text-lg font-black tracking-tight text-slate-100">Arc Daily Streak</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-700/80 bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Arc Testnet
+            </span>
+          </div>
         </div>
-        <ConnectButton showBalance={false} />
+        <ConnectButton showBalance={false} chainStatus="none" />
       </header>
 
       {/* Config / network warnings */}
@@ -274,270 +298,317 @@ export default function StreakApp() {
         <div className="card mb-6 border-amber-700/60 bg-amber-950/30 text-amber-200">
           <p className="font-semibold">Contract not configured</p>
           <p className="mt-1 text-sm">
-            Set <code className="rounded bg-black/40 px-1">NEXT_PUBLIC_STREAK_CONTRACT</code> to the deployed
-            ArcDailyStreak address and redeploy the frontend.
+            Set <code className="rounded bg-black/40 px-1">NEXT_PUBLIC_STREAK_CONTRACT</code> and redeploy.
           </p>
         </div>
       )}
 
       {wrongNetwork && (
         <div className="card mb-6 flex flex-wrap items-center justify-between gap-3 border-rose-700/60 bg-rose-950/30 text-rose-200">
-          <p className="font-semibold">Wrong network — this app runs on Arc Testnet (chain 5042002).</p>
+          <p className="text-sm font-semibold">Wrong network — this app runs on Arc Testnet.</p>
           <button className="btn-secondary" onClick={() => switchChain({chainId: arcTestnet.id})}>
-            Switch to Arc Testnet
+            Switch network
           </button>
         </div>
       )}
 
       {paused && (
         <div className="card mb-6 border-amber-700/60 bg-amber-950/30 text-amber-200">
-          <p className="font-semibold">Contract paused</p>
-          <p className="mt-1 text-sm">Registrations and claims are temporarily disabled by the administrator.</p>
+          <p className="text-sm font-semibold">Contract paused — claims are temporarily disabled.</p>
         </div>
       )}
 
       {!isConnected ? (
-        <section className="card text-center">
-          <h2 className="text-xl font-bold text-slate-100">Build your on-chain streak</h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-400">
-            Register once for <strong className="text-slate-200">1.00 USDC</strong>, then claim every day for{" "}
-            <strong className="text-slate-200">0.01 USDC</strong> to extend your streak. Miss the 48-hour window
-            and your streak restarts at 1 — your longest streak is preserved forever. Everything lives on-chain;
-            this site only displays blockchain state.
-          </p>
-          <div className="mt-6 flex justify-center">
-            <ConnectButton />
+        /* ---------------- Landing (disconnected) ---------------- */
+        <section className="fade-up card card-hover px-8 py-14 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-400">
+            <Flame size={30} />
           </div>
+          <h2 className="mt-6 text-3xl font-black tracking-tight text-slate-100 sm:text-4xl">
+            Build consistency.
+            <br />
+            <span className="text-cyan-400">Claim daily.</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-400">
+            Register once for <strong className="text-slate-200">1.00 USDC</strong>, then check in every day for{" "}
+            <strong className="text-slate-200">0.01 USDC</strong> to grow your on-chain streak. Miss 48 hours and
+            it restarts — your longest streak is preserved forever.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <ConnectButton label="Connect wallet to start" />
+          </div>
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-slate-600">
+            <ShieldCheck size={14} />
+            Fully on-chain · No backend · Open source
+          </p>
         </section>
       ) : (
         <>
-          {/* Streak stats */}
-          <section className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="card">
-              <p className="stat-label">Current streak</p>
-              <p className="stat-value">
-                {registered ? `${user!.streak} 🔥` : "—"}
-                {expired && registered && (
-                  <span className="ml-2 align-middle text-xs font-semibold text-rose-400">expired</span>
-                )}
+          {/* ---------------- Hero: the three answers ---------------- */}
+          <section className="fade-up mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* 1. How many days is my streak? */}
+            <div className={`card card-hover text-center ${justClaimed ? "claim-success" : ""}`}>
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-orange-400/10 text-orange-400">
+                <Flame size={20} />
+              </div>
+              <p className="stat-value mt-3">
+                {registered ? user!.streak : "—"}
+                {registered && <span className="ml-1 text-base font-semibold text-slate-400">day{user!.streak === 1 ? "" : "s"}</span>}
               </p>
+              <p className="stat-label mt-2">Current streak</p>
+              {expired && registered && (
+                <p className="mt-1.5 text-[11px] font-semibold text-rose-400">expired — claim to restart</p>
+              )}
             </div>
-            <div className="card">
-              <p className="stat-label">Longest streak</p>
-              <p className="stat-value">{registered ? String(user!.longestStreak) : "—"}</p>
-            </div>
-            <div className="card">
-              <p className="stat-label">Your USDC</p>
-              <p className="stat-value">{fmtUsdc(usdcBalQ.data as bigint | undefined)}</p>
-            </div>
-            <div className="card">
-              <p className="stat-label">Next claim in</p>
-              <p className="stat-value tabular-nums">
-                {registered ? (claimable ? "Now" : fmtCountdown(secondsToClaim)) : "—"}
+
+            {/* 2. Longest streak */}
+            <div className="card card-hover text-center">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
+                <Trophy size={20} />
+              </div>
+              <p className="stat-value mt-3">
+                {registered ? user!.longestStreak : "—"}
+                {registered && <span className="ml-1 text-base font-semibold text-slate-400">day{user!.longestStreak === 1 ? "" : "s"}</span>}
               </p>
+              <p className="stat-label mt-2">Longest streak</p>
+            </div>
+
+            {/* 3. My balance */}
+            <div className="card card-hover text-center">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-400">
+                <Wallet size={20} />
+              </div>
+              <p className="stat-value mt-3">
+                {fmtUsdc2(usdcBalQ.data as bigint | undefined)}
+                <span className="ml-1 text-base font-semibold text-slate-400">USDC</span>
+              </p>
+              <p className="stat-label mt-2">Your balance</p>
             </div>
           </section>
 
-          {/* Action */}
-          <section className="card mb-6">
-            {!registered ? (
-              <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-100">Start your streak</h2>
-                  <p className="mt-1 text-sm text-slate-400">
-                    One-time registration fee: <strong className="text-slate-200">1.00 USDC</strong>. Never charged
-                    again. Your streak starts at 1 immediately.
-                  </p>
-                </div>
+          {/* ---------------- Countdown + action ---------------- */}
+          <section className="fade-up fade-up-1 card mb-6 flex flex-col items-center px-6 py-8">
+            {registered ? (
+              <>
+                <CountdownRing
+                  secondsRemaining={secondsToClaim}
+                  totalSeconds={24 * 3600}
+                  label={ringLabel}
+                  sublabel={ringSublabel}
+                  claimable={claimable}
+                />
                 <button
-                  className="btn-primary"
-                  disabled={busy !== "idle" || !ready || paused}
-                  onClick={onRegister}
-                >
-                  {busy === "approving"
-                    ? "Approving USDC…"
-                    : busy === "registering"
-                      ? "Registering…"
-                      : "Register · 1.00 USDC"}
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-100">
-                    {expired ? "Streak expired — restart it" : claimable ? "Claim available!" : "Come back soon"}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {expired ? (
-                      <>
-                        More than 48h passed since your last claim. Claiming now costs{" "}
-                        <strong className="text-slate-200">0.01 USDC</strong> and restarts your streak at 1. Your
-                        longest streak ({String(user!.longestStreak)}) is preserved.
-                      </>
-                    ) : claimable ? (
-                      <>
-                        Pay <strong className="text-slate-200">0.01 USDC</strong> to extend your streak to{" "}
-                        {user!.streak + 1}. Claim within{" "}
-                        <strong className="text-slate-200">{fmtCountdown(secondsToExpiry)}</strong> or it resets.
-                      </>
-                    ) : (
-                      <>
-                        Next claim unlocks in{" "}
-                        <strong className="tabular-nums text-slate-200">{fmtCountdown(secondsToClaim)}</strong>.
-                        After unlocking, claim before the 48h mark to keep your streak.
-                      </>
-                    )}
-                  </p>
-                </div>
-                <button
-                  className="btn-primary"
+                  className="btn-primary mt-6 w-full max-w-xs"
                   disabled={busy !== "idle" || !claimable || paused}
                   onClick={onClaim}
                 >
-                  {busy === "approving"
-                    ? "Approving USDC…"
-                    : busy === "claiming"
-                      ? "Claiming…"
-                      : expired
-                        ? "Restart streak · 0.01 USDC"
-                        : "Claim · 0.01 USDC"}
+                  {busy === "approving" ? (
+                    "Approving USDC…"
+                  ) : busy === "claiming" ? (
+                    "Claiming…"
+                  ) : expired ? (
+                    <>
+                      <Flame size={18} /> Restart streak · 0.01 USDC
+                    </>
+                  ) : claimable ? (
+                    <>
+                      <Flame size={18} /> Claim day {user!.streak + 1} · 0.01 USDC
+                    </>
+                  ) : (
+                    <>
+                      <Clock size={18} /> Next claim in {fmtCountdown(secondsToClaim)}
+                    </>
+                  )}
+                </button>
+
+                {/* Timeline */}
+                <div className="mt-8 w-full border-t border-slate-800/70 pt-6">
+                  <StreakTimeline streak={user!.streak} />
+                </div>
+              </>
+            ) : (
+              <div className="flex w-full flex-col items-center py-4 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-400">
+                  <Calendar size={24} />
+                </div>
+                <h2 className="mt-4 text-xl font-bold text-slate-100">Start your streak</h2>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-400">
+                  One-time registration: <strong className="text-slate-200">1.00 USDC</strong>. Never charged
+                  again. Your streak starts at day 1 immediately.
+                </p>
+                <button
+                  className="btn-primary mt-6 w-full max-w-xs"
+                  disabled={busy !== "idle" || !ready || paused}
+                  onClick={onRegister}
+                >
+                  {busy === "approving" ? (
+                    "Approving USDC…"
+                  ) : busy === "registering" ? (
+                    "Registering…"
+                  ) : (
+                    <>
+                      <Coins size={18} /> Register · 1.00 USDC
+                    </>
+                  )}
                 </button>
               </div>
             )}
 
             {error && (
-              <p className="mt-4 rounded-lg border border-rose-800 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
+              <p className="mt-5 w-full rounded-xl border border-rose-800/70 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
                 {error}
               </p>
             )}
             {notice && !error && (
-              <p className="mt-4 rounded-lg border border-cyan-800 bg-cyan-950/30 px-4 py-3 text-sm text-cyan-200">
+              <p className="mt-5 w-full rounded-xl border border-cyan-800/70 bg-cyan-950/30 px-4 py-3 text-sm text-cyan-200">
                 {notice}
               </p>
             )}
           </section>
 
-          {/* Profile details */}
+          {/* ---------------- Secondary info ---------------- */}
           {registered && (
-            <section className="mb-6 grid gap-4 md:grid-cols-2">
+            <section className="fade-up fade-up-2 mb-6 grid gap-4 sm:grid-cols-2">
               <div className="card">
-                <p className="stat-label">Registered</p>
-                <p className="mt-1 text-sm text-slate-300">
-                  {new Date(Number(user!.registeredAt) * 1000).toLocaleString()}
+                <p className="stat-label flex items-center gap-1.5">
+                  <Calendar size={13} /> Member since
                 </p>
-                <p className="stat-label mt-4">Last claim</p>
-                <p className="mt-1 text-sm text-slate-300">{new Date(lastClaim * 1000).toLocaleString()}</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  {new Date(Number(user!.registeredAt) * 1000).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
               </div>
               <div className="card">
-                <p className="stat-label">Claim window</p>
-                <p className="mt-1 text-sm text-slate-300">
-                  Opens: {new Date(nextClaimAt * 1000).toLocaleString()}
+                <p className="stat-label flex items-center gap-1.5">
+                  <Clock size={13} /> Claim window
                 </p>
-                <p className="mt-1 text-sm text-slate-300">
-                  Expires: {new Date(expiresAt * 1000).toLocaleString()}
+                <p className="mt-2 text-sm text-slate-300">
+                  Opens {new Date(nextClaimAt * 1000).toLocaleString()} · closes{" "}
+                  {new Date(expiresAt * 1000).toLocaleString()}
                 </p>
-                {registered && !expired && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Streak survives if you claim before the expiry time.
-                  </p>
-                )}
               </div>
             </section>
           )}
+
+          {/* ---------------- Session transactions ---------------- */}
+          {txs.length > 0 && (
+            <section className="fade-up fade-up-3 card mb-6">
+              <p className="stat-label mb-3">Recent activity</p>
+              <ul className="space-y-2.5 text-sm">
+                {txs.map((t) => (
+                  <li key={t.hash} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-slate-300">{t.label}</span>
+                    <span className="flex items-center gap-3">
+                      <span
+                        className={
+                          t.status === "confirmed"
+                            ? "inline-flex items-center gap-1 text-xs font-medium text-emerald-400"
+                            : t.status === "failed"
+                              ? "text-xs font-medium text-rose-400"
+                              : "text-xs font-medium text-amber-300"
+                        }
+                      >
+                        {t.status}
+                      </span>
+                      <a
+                        className="inline-flex items-center gap-1 text-xs text-cyan-400 hover:underline"
+                        href={`${EXPLORER_URL}/tx/${t.hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {shortAddr(t.hash)} <ExternalLink size={11} />
+                      </a>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* ---------------- Advanced details (collapsed) ---------------- */}
+          <section className="fade-up fade-up-3 mb-6">
+            <button
+              className="flex w-full items-center justify-between rounded-xl border border-slate-800/70 bg-slate-900/30 px-4 py-3 text-left text-xs font-medium text-slate-500 transition hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500"
+              onClick={() => setAdvancedOpen((v) => !v)}
+              aria-expanded={advancedOpen}
+            >
+              <span>Advanced details</span>
+              <ChevronDown size={14} className={`transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+            </button>
+            {advancedOpen && (
+              <div className="mt-2 rounded-xl border border-slate-800/70 bg-slate-900/30 px-4 py-3">
+                <ul className="space-y-2 text-xs text-slate-500">
+                  <li className="flex flex-wrap items-center justify-between gap-2">
+                    <span>Streak contract</span>
+                    <a
+                      className="inline-flex items-center gap-1 text-cyan-500 hover:underline"
+                      href={`${EXPLORER_URL}/address/${STREAK_CONTRACT}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {shortAddr(STREAK_CONTRACT)} <ExternalLink size={11} />
+                    </a>
+                  </li>
+                  <li className="flex flex-wrap items-center justify-between gap-2">
+                    <span>Treasury</span>
+                    <a
+                      className="inline-flex items-center gap-1 text-cyan-500 hover:underline"
+                      href={`${EXPLORER_URL}/address/${treasuryQ.data ?? ""}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {shortAddr(treasuryQ.data as string | undefined)} <ExternalLink size={11} />
+                    </a>
+                  </li>
+                  <li className="flex flex-wrap items-center justify-between gap-2">
+                    <span>USDC token</span>
+                    <a
+                      className="inline-flex items-center gap-1 text-cyan-500 hover:underline"
+                      href={`${EXPLORER_URL}/token/${USDC_ADDRESS}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {shortAddr(USDC_ADDRESS)} <ExternalLink size={11} />
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </section>
         </>
       )}
 
-      {/* Contract info */}
-      <section className="mb-6 grid gap-4 md:grid-cols-2">
-        <div className="card">
-          <p className="stat-label">Contract USDC balance</p>
-          <p className="stat-value">{fmtUsdc(balanceQ.data as bigint | undefined)}</p>
-          <p className="mt-3 text-xs text-slate-500">
-            Fees accumulate in the contract; only the treasury can receive withdrawals.
-          </p>
+      {/* ---------------- Footer ---------------- */}
+      <footer className="mt-12 border-t border-slate-800/60 pt-6">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-slate-500">
+          <span className="text-slate-600">Built for Arc Testnet</span>
+          <a
+            className="hover:text-slate-300"
+            href={`${EXPLORER_URL}/address/${STREAK_CONTRACT}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Contract
+          </a>
+          <a className="hover:text-slate-300" href={EXPLORER_URL} target="_blank" rel="noopener noreferrer">
+            Explorer
+          </a>
+          <a
+            className="hover:text-slate-300"
+            href="https://github.com/ibrhmuyls/arc-daily-streak"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
         </div>
-        <div className="card">
-          <p className="stat-label">Addresses</p>
-          <ul className="mt-2 space-y-2 text-sm">
-            <li>
-              <span className="text-slate-500">Contract: </span>
-              <a
-                className="text-cyan-400 hover:underline"
-                href={`${EXPLORER_URL}/address/${STREAK_CONTRACT}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {shortAddr(STREAK_CONTRACT)}
-              </a>
-            </li>
-            <li>
-              <span className="text-slate-500">Treasury: </span>
-              <a
-                className="text-cyan-400 hover:underline"
-                href={`${EXPLORER_URL}/address/${treasuryQ.data ?? ""}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {shortAddr(treasuryQ.data as string | undefined)}
-              </a>
-            </li>
-            <li>
-              <span className="text-slate-500">USDC: </span>
-              <a
-                className="text-cyan-400 hover:underline"
-                href={`${EXPLORER_URL}/token/${USDC_ADDRESS}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {shortAddr(USDC_ADDRESS)}
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      {/* Session transaction history */}
-      {txs.length > 0 && (
-        <section className="card">
-          <p className="stat-label mb-3">Your transactions (this session)</p>
-          <ul className="space-y-2 text-sm">
-            {txs.map((t) => (
-              <li key={t.hash} className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-slate-300">{t.label}</span>
-                <span className="flex items-center gap-3">
-                  <span
-                    className={
-                      t.status === "confirmed"
-                        ? "text-emerald-400"
-                        : t.status === "failed"
-                          ? "text-rose-400"
-                          : "text-amber-300"
-                    }
-                  >
-                    {t.status}
-                  </span>
-                  <a
-                    className="text-cyan-400 hover:underline"
-                    href={`${EXPLORER_URL}/tx/${t.hash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {shortAddr(t.hash)}
-                  </a>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <footer className="mt-10 text-center text-xs leading-5 text-slate-600">
-        <p>
-          Unofficial community project on Arc Testnet. Not affiliated with, endorsed by, or sponsored by Circle or
-          the Arc network. Testnet tokens only — no monetary value.
-        </p>
-        <p className="mt-1">
-          All state lives on-chain. This site holds no funds and has no backend.
+        <p className="mt-4 text-center text-[11px] leading-4 text-slate-700">
+          Unofficial community project. Not affiliated with, endorsed by, or sponsored by Circle or the Arc
+          network. Testnet tokens only — no monetary value. All state lives on-chain; this site holds no funds
+          and has no backend.
         </p>
       </footer>
     </main>
