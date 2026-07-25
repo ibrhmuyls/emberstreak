@@ -1,0 +1,18 @@
+# Foundry
+contracts-foundry/out/
+contracts-foundry/cache/
+contracts-foundry/broadcast/
+contracts-foundry/lib/
+arc-daily-streak/tools/
+tools/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env*.local
+
+# Misc
+.DS_Store
+*.log

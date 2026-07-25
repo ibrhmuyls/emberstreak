@@ -1,0 +1,24 @@
+'forge clean' running (wd: C:\Users\90530\arc-daily-streak\contracts-foundry)
+'forge config --json' running
+'forge build --build-info --skip ./test/** ./script/** --force' running (wd: C:\Users\90530\arc-daily-streak\contracts-foundry)
+INFO:Detectors:
+Detector: timestamp
+ArcDailyStreak.claim() (src/ArcDailyStreak.sol#230-258) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < last + CLAIM_INTERVAL (src/ArcDailyStreak.sol#235)
+	- block.timestamp > last + STREAK_WINDOW (src/ArcDailyStreak.sol#240)
+ArcDailyStreak.canClaim(address) (src/ArcDailyStreak.sol#334-337) uses timestamp for comparisons
+	Dangerous comparisons:
+	- u.exists && ! paused() && block.timestamp >= uint256(u.lastClaim) + CLAIM_INTERVAL (src/ArcDailyStreak.sol#336)
+ArcDailyStreak.secondsRemaining(address) (src/ArcDailyStreak.sol#348-353) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= next (src/ArcDailyStreak.sol#352)
+ArcDailyStreak.isStreakExpired(address) (src/ArcDailyStreak.sol#357-360) uses timestamp for comparisons
+	Dangerous comparisons:
+	- u.exists && block.timestamp > uint256(u.lastClaim) + STREAK_WINDOW (src/ArcDailyStreak.sol#359)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+Detector: naming-convention
+Variable ArcDailyStreak.USDC (src/ArcDailyStreak.sol#84) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+INFO:Slither:. analyzed (13 contracts with 101 detectors), 5 result(s) found
