@@ -12,7 +12,7 @@ import {arcTestnet} from "./config";
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_ID ?? "00000000000000000000000000000000";
 
 export const wagmiConfig = getDefaultConfig({
-  appName: "Arc Daily Streak",
+  appName: "EmberStreak",
   projectId,
   chains: [arcTestnet],
   transports: {

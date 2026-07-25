@@ -1,4 +1,4 @@
-# Gas Optimization Notes — Arc Daily Streak
+# Gas Optimization Notes — EmberStreak
 
 ## Applied optimizations
 

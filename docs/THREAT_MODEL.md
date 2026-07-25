@@ -1,4 +1,4 @@
-# Threat Model — Arc Daily Streak
+# Threat Model — EmberStreak
 
 Scope: `ArcDailyStreak.sol` on Arc Testnet + static Next.js frontend.
 Assets at risk: users' USDC allowances/balances, collected fees held by the

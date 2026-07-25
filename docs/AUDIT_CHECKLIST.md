@@ -1,4 +1,4 @@
-# Audit Checklist — Arc Daily Streak
+# Audit Checklist — EmberStreak
 
 For the external auditor. Every line links to code or a test proving the claim.
 

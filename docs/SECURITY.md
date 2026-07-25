@@ -1,4 +1,4 @@
-# Security Notes — Arc Daily Streak
+# Security Notes — EmberStreak
 
 ## Controls implemented
 

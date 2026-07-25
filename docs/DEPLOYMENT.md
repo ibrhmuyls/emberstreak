@@ -1,4 +1,4 @@
-# Deployment Guide — Arc Daily Streak
+# Deployment Guide — EmberStreak
 
 ## 0. Prerequisites
 

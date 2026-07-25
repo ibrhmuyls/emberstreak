@@ -1,11 +1,17 @@
-# Arc Daily Streak
+# EmberStreak
 
-Production-grade, fully on-chain daily streak dApp for **Arc Testnet**, paid in the
-official Arc Testnet USDC. No backend — the smart contract is the single source of
-truth and the frontend only displays blockchain state.
+**Built on Arc** — production-grade, fully on-chain daily streak dApp running on the
+Arc Network testnet, paid in the official Arc Testnet USDC. No backend — the smart
+contract is the single source of truth and the frontend only displays blockchain state.
 
 > Unofficial community project. Not affiliated with, endorsed by, or sponsored by
-> Circle or the Arc network. Testnet tokens only — no monetary value.
+> Circle or the Arc network. Arc is a trademark of Circle Internet Group, Inc.
+> and/or its affiliates. Testnet tokens only — no monetary value.
+>
+> Naming follows the [Arc partner guidelines](https://www.arc.io/brand-guidelines-and-partner-toolkit):
+> our own brand leads; Arc is referenced only as the underlying infrastructure.
+> The on-chain contract identifier (`ArcDailyStreak`) predates the rename and is a
+> code-level artifact, not a product name.
 
 ## How it works
 

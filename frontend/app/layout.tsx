@@ -3,9 +3,9 @@ import {Providers} from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Arc Daily Streak",
+  title: "EmberStreak — built on Arc",
   description:
-    "On-chain daily streak tracker on Arc Testnet. Register once for 1 USDC, claim daily for 0.01 USDC, keep your streak alive.",
+    "Keep your on-chain daily streak alive. Register once for 1 USDC, claim daily for 0.01 USDC. Built on Arc (testnet).",
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {

@@ -1,4 +1,4 @@
-# Architecture — Arc Daily Streak
+# Architecture — EmberStreak
 
 ## System overview
 

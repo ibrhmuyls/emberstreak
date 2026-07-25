@@ -283,10 +283,10 @@ export default function StreakApp() {
             <Flame size={22} />
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-tight text-slate-100">Arc Daily Streak</h1>
+            <h1 className="text-lg font-black tracking-tight text-slate-100">EmberStreak</h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-700/80 bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Arc Testnet
+              Built on Arc · Testnet
             </span>
           </div>
         </div>
@@ -332,7 +332,7 @@ export default function StreakApp() {
           <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-400">
             Register once for <strong className="text-slate-200">1.00 USDC</strong>, then check in every day for{" "}
             <strong className="text-slate-200">0.01 USDC</strong> to grow your on-chain streak. Miss 48 hours and
-            it restarts — your longest streak is preserved forever.
+            it restarts — your longest streak is preserved forever. Built on the Arc Network testnet.
           </p>
           <div className="mt-8 flex justify-center">
             <ConnectButton label="Connect wallet to start" />
@@ -584,7 +584,7 @@ export default function StreakApp() {
       {/* ---------------- Footer ---------------- */}
       <footer className="mt-12 border-t border-slate-800/60 pt-6">
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-slate-500">
-          <span className="text-slate-600">Built for Arc Testnet</span>
+          <span className="text-slate-600">EmberStreak — built on Arc</span>
           <a
             className="hover:text-slate-300"
             href={`${EXPLORER_URL}/address/${STREAK_CONTRACT}`}
@@ -598,7 +598,7 @@ export default function StreakApp() {
           </a>
           <a
             className="hover:text-slate-300"
-            href="https://github.com/ibrhmuyls/arc-daily-streak"
+            href="https://github.com/ibrhmuyls/emberstreak"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -607,8 +607,8 @@ export default function StreakApp() {
         </div>
         <p className="mt-4 text-center text-[11px] leading-4 text-slate-700">
           Unofficial community project. Not affiliated with, endorsed by, or sponsored by Circle or the Arc
-          network. Testnet tokens only — no monetary value. All state lives on-chain; this site holds no funds
-          and has no backend.
+          network. Arc is a trademark of Circle Internet Group, Inc. and/or its affiliates. Testnet tokens only —
+          no monetary value. All state lives on-chain; this site holds no funds and has no backend.
         </p>
       </footer>
     </main>
