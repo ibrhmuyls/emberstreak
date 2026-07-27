@@ -16,6 +16,20 @@ Canonical network values (verified live):
 | Explorer | `https://testnet.arcscan.app` |
 | USDC | `0x3600000000000000000000000000000000000000` |
 
+## Current deployment (Arc Testnet)
+
+| | |
+|---|---|
+| Contract | `ArcDailyStreak` (source name), product name **EmberStreak** |
+| Address | `0x878B1ECE9f861D8E9a0DdB6a3dA7cc4CA5F70423` |
+| Compiler | Solidity `0.8.24+commit.e11b9ed9`, EVM `shanghai`, optimizer **off** |
+| Owner / Treasury | `0xCb4D9629D3F6cc5C26dd1B6E56320602177A7a70` |
+| Frontend | `https://emberstreak.vercel.app` |
+
+> Deployed via Remix single-file flat (OZ bundled). Verify on Arcscan with the
+> same settings + ABI-encoded constructor args
+> `0x0000...3600...0000cb4d...7a700000...cb4d...7a70`.
+
 ## 1A. Deploy the contract — Foundry script (recommended)
 
 ```bash

@@ -13,6 +13,14 @@ contract is the single source of truth and the frontend only displays blockchain
 > The on-chain contract identifier (`ArcDailyStreak`) predates the rename and is a
 > code-level artifact, not a product name.
 
+## Live deployment (Arc Testnet)
+
+| | |
+|---|---|
+| Frontend | https://emberstreak.vercel.app |
+| Contract | `0x878B1ECE9f861D8E9a0DdB6a3dA7cc4CA5F70423` (verify pending on Arcscan) |
+| Explorer | https://testnet.arcscan.app |
+
 ## How it works
 
 | Action | Cost | Effect |
