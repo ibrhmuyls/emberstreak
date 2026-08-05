@@ -16,7 +16,10 @@ export const wagmiConfig = getDefaultConfig({
   projectId,
   chains: [arcTestnet],
   transports: {
-    [arcTestnet.id]: http("https://rpc.testnet.arc.network", {
+    // Same-origin proxy (app/api/rpc) — the public Arc RPC sends no CORS
+    // headers and rejects browser preflights, so calling it directly from the
+    // browser fails with "HTTP request failed." The proxy forwards server-side.
+    [arcTestnet.id]: http("/api/rpc", {
       batch: false,
       retryCount: 3,
       retryDelay: 500,
